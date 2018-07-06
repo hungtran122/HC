@@ -52,7 +52,11 @@ def nn_model(X_num, X_cat, cat_len, cat_cols):
     for name in cat_cols:
         input_cat.append(Input(shape=(1,), name="cat_" + name))
     for x, c_len in zip(input_cat, cat_len):
-        x = Embedding(c_len + 1, (c_len // 2) + 1, embeddings_initializer="normal")(x)
+        if c_len < 8:
+            embed_size = 5
+        else:
+            embed_size = (c_len//2) + 1
+        x = Embedding(c_len + 1, (c_len//2) + 1, embeddings_initializer="normal")(x)
         # x = SpatialDropout1D(0.25)(x)
         x = Flatten()(x)
         # x = Dense(c_len * 8, activation="relu", kernel_initializer="normal")(x)
@@ -69,15 +73,15 @@ def nn_model(X_num, X_cat, cat_len, cat_cols):
     print(out_num_cat.shape)
     out_num_cat = Dense(N_HIDDEN_1, activation="relu", kernel_initializer="normal")(out_num_cat)
     out_num_cat = BatchNormalization()(out_num_cat)
-    out_num_cat = Dropout(0.2)(out_num_cat)
+    out_num_cat = Dropout(0.5)(out_num_cat)
 
     out_num_cat = Dense(N_HIDDEN_2, activation="relu", kernel_initializer="normal")(out_num_cat)
     out_num_cat = BatchNormalization()(out_num_cat)
-    out_num_cat = Dropout(0.2)(out_num_cat)
+    out_num_cat = Dropout(0.5)(out_num_cat)
 
     out_num_cat = Dense(N_HIDDEN_3, activation="relu", kernel_initializer="normal")(out_num_cat)
     out_num_cat = BatchNormalization()(out_num_cat)
-    out_num_cat = Dropout(0.2)(out_num_cat)
+    out_num_cat = Dropout(0.5)(out_num_cat)
 
     print(out_num_cat.shape)
     out_num_cat = Dense(1, activation="sigmoid", kernel_initializer="normal")(out_num_cat)
@@ -136,9 +140,9 @@ def train():
         'STATUS',
         'NAME_CONTRACT_STATUS_CAVG'
     ]
-    print('Categorical features length before add non object categorical features: ', len(cat_cols))
-    cat_cols = list(set(cat_cols + non_obj_categoricals))
-    print('Categorical features length after add non object categorical features: ', len(cat_cols))
+    # print('Categorical features length before add non object categorical features: ', len(cat_cols))
+    # cat_cols = list(set(cat_cols + non_obj_categoricals))
+    # print('Categorical features length after add non object categorical features: ', len(cat_cols))
     for c in cat_cols:
         print(f'{c} has {len(merged_df[c].unique())} unique values')
 
@@ -187,8 +191,8 @@ def train():
     final_col_names = merged_df.columns
     merged_df[num_cols] = scaler.fit_transform(merged_df[num_cols])
 
-    scaler_2 = MinMaxScaler(feature_range=(0, 1))
-    merged_df[non_obj_categoricals] = scaler_2.fit_transform(merged_df[non_obj_categoricals])
+    # scaler_2 = MinMaxScaler(feature_range=(0, 1))
+    # merged_df[non_obj_categoricals] = scaler_2.fit_transform(merged_df[non_obj_categoricals])
 
     # Re-separate into labelled and unlabelled
     tr_df = merged_df[:len_train]
@@ -228,11 +232,11 @@ def train():
         return roc_auc_score(y_true, y_pred)
 
     model = nn_model(X_num, X_cat, cat_len, cat_cols)
-    model.compile(loss='mean_squared_error',
+    model.compile(loss='binary_crossentropy',
                   optimizer=keras.optimizers.Adam(lr=LR))  # , metrics=['binary_accuracy'])
 
     # kfold = KFold(n_splits=5, shuffle=True, random_state=2018)
-    skf = StratifiedKFold(n_splits=n_folds)
+    skf = StratifiedKFold(n_splits=n_folds, random_state=2)
     skf.get_n_splits(tr_df, y)
     oof_preds = np.zeros((tr_df.shape[0], 1))
 
