@@ -286,53 +286,29 @@ def merge_cc(merged_df, credit_card_df):
     merged_df = merged_df.merge(credit_card_avgs, left_on='SK_ID_CURR', right_index=True,
                                 how='left', suffixes=['', '_CCAVG'])
 
-    agg_funs = {'AMT_BALANCE': 'mean',
-                'AMT_CREDIT_LIMIT_ACTUAL': 'mean',
-                'AMT_DRAWINGS_CURRENT': 'mean',
-                'AMT_DRAWINGS_ATM_CURRENT': 'mean',
-                'AMT_DRAWINGS_OTHER_CURRENT': 'mean',
-                'AMT_DRAWINGS_POS_CURRENT': 'mean',
-                'AMT_INST_MIN_REGULARITY': 'mean',
-                'AMT_PAYMENT_CURRENT': 'mean',
-                'AMT_PAYMENT_TOTAL_CURRENT': 'mean',
-                'AMT_RECEIVABLE_PRINCIPAL': 'mean',
-                'AMT_RECIVABLE': 'mean',
-                'AMT_TOTAL_RECEIVABLE': 'mean',
-                'CNT_DRAWINGS_ATM_CURRENT': 'mean',
-                'CNT_DRAWINGS_CURRENT': 'mean',
-                'CNT_DRAWINGS_OTHER_CURRENT': 'mean',
-                'CNT_DRAWINGS_POS_CURRENT': 'mean',
-                'CNT_INSTALMENT_MATURE_CUM': 'mean',
-                'SK_DPD': 'mean',
-                'SK_DPD_DEF': 'mean',
+    agg_funs = {'AMT_BALANCE':['mean', 'sum'],
+                'AMT_CREDIT_LIMIT_ACTUAL': ['mean','sum'],
+                'AMT_DRAWINGS_CURRENT': ['mean','sum'],
+                'AMT_DRAWINGS_ATM_CURRENT': ['mean','sum'],
+                'AMT_DRAWINGS_OTHER_CURRENT': ['mean','sum'],
+                'AMT_DRAWINGS_POS_CURRENT': ['mean','sum'],
+                'AMT_INST_MIN_REGULARITY': ['mean','sum'],
+                'AMT_PAYMENT_CURRENT': ['mean','sum'],
+                'AMT_PAYMENT_TOTAL_CURRENT': ['mean','sum'],
+                'AMT_RECEIVABLE_PRINCIPAL': ['mean','sum'],
+                'AMT_RECIVABLE': ['mean','sum'],
+                'AMT_TOTAL_RECEIVABLE': ['mean','sum'],
+                'CNT_DRAWINGS_ATM_CURRENT': ['mean','sum'],
+                'CNT_DRAWINGS_CURRENT': ['mean','sum'],
+                'CNT_DRAWINGS_OTHER_CURRENT': ['mean','sum'],
+                'CNT_DRAWINGS_POS_CURRENT': ['mean','sum'],
+                'CNT_INSTALMENT_MATURE_CUM': ['mean','sum'],
+                'SK_DPD': ['mean','sum'],
+                'SK_DPD_DEF': ['mean','sum'],
                 }
 
     cc_agg = credit_card_df.groupby('SK_ID_CURR').agg(agg_funs)
-    cc_agg.columns = [k + '_' + agg_funs[k] for k in agg_funs.keys()]
-    merged_df = merged_df.merge(cc_agg, left_on='SK_ID_CURR', right_index=True, how='left')
-
-    agg_funs = {'AMT_BALANCE': 'sum',
-                'AMT_CREDIT_LIMIT_ACTUAL': 'sum',
-                'AMT_DRAWINGS_CURRENT': 'sum',
-                'AMT_DRAWINGS_ATM_CURRENT': 'sum',
-                'AMT_DRAWINGS_OTHER_CURRENT': 'sum',
-                'AMT_DRAWINGS_POS_CURRENT': 'sum',
-                'AMT_INST_MIN_REGULARITY': 'sum',
-                'AMT_PAYMENT_CURRENT': 'sum',
-                'AMT_PAYMENT_TOTAL_CURRENT': 'sum',
-                'AMT_RECEIVABLE_PRINCIPAL': 'sum',
-                'AMT_RECIVABLE': 'sum',
-                'AMT_TOTAL_RECEIVABLE': 'sum',
-                'CNT_DRAWINGS_ATM_CURRENT': 'sum',
-                'CNT_DRAWINGS_CURRENT': 'sum',
-                'CNT_DRAWINGS_OTHER_CURRENT': 'sum',
-                'CNT_DRAWINGS_POS_CURRENT': 'sum',
-                'CNT_INSTALMENT_MATURE_CUM': 'sum',
-                'SK_DPD': 'sum',
-                'SK_DPD_DEF': 'sum',
-                }
-    cc_agg = credit_card_df.groupby('SK_ID_CURR').agg(agg_funs)
-    cc_agg.columns = [k + '_' + agg_funs[k] for k in agg_funs.keys()]
+    cc_agg.columns = pd.Index(['BUREAU_' + e[0] + "_" + e[1].upper() for e in cc_agg.columns.tolist()])
     merged_df = merged_df.merge(cc_agg, left_on='SK_ID_CURR', right_index=True, how='left')
 
     # Credit card data - categorical features
@@ -349,6 +325,23 @@ def merge_bureau(merged_df, bureau_df, bureau_balance_df):
     credit_bureau_avgs = bureau_df.groupby('SK_ID_CURR').mean()
     merged_df = merged_df.merge(credit_bureau_avgs, left_on='SK_ID_CURR', right_index=True,
                                 how='left', suffixes=['', '_BAVG'])
+
+    agg_funs = {
+        'CREDIT_DAY_OVERDUE': ['std', 'mean', 'sum'],
+        'AMT_CREDIT_MAX_OVERDUE': ['std', 'mean', 'sum'],
+        'CNT_CREDIT_PROLONG': ['std', 'mean', 'sum'],
+        'AMT_CREDIT_SUM': ['std', 'mean', 'sum'],
+        'AMT_CREDIT_SUM_DEBT': ['std', 'mean', 'sum'],
+        'AMT_CREDIT_SUM_LIMIT': ['std', 'mean', 'sum'],
+        'AMT_CREDIT_SUM_OVERDUE': ['std', 'mean', 'sum'],
+        'AMT_ANNUITY': ['std', 'mean', 'sum'],
+    }
+    br_agg = bureau_df.groupby('SK_ID_CURR').agg(agg_funs)
+    br_agg.columns = pd.Index(['BUREAU_' + e[0] + "_" + e[1].upper() for e in br_agg.columns.tolist()])
+    print(br_agg.columns)
+    merged_df = merged_df.merge(br_agg, left_on='SK_ID_CURR', right_index=True, how='left')
+
+
     print('Shape after merging with credit bureau data = {}'.format(merged_df.shape))
 
     # Bureau balance data
@@ -395,9 +388,23 @@ def feature_engineering(app_data, bureau_df, bureau_balance_df, credit_card_df,
     # # Add new features
 
     # Amount loaned relative to salary
-    app_data['LOAN_INCOME_RATIO'] = app_data['AMT_CREDIT'] / app_data['AMT_INCOME_TOTAL']
-    app_data['ANNUITY_INCOME_RATIO'] = app_data['AMT_ANNUITY'] / app_data['AMT_INCOME_TOTAL']
-    app_data['ANNUITY LENGTH'] = app_data['AMT_CREDIT'] / app_data['AMT_ANNUITY']
+    app_data['NEW_CREDIT_TO_ANNUITY_RATIO'] = app_data['AMT_CREDIT'] / app_data['AMT_ANNUITY']
+    app_data['NEW_CREDIT_TO_GOODS_RATIO'] = app_data['AMT_CREDIT'] / app_data['AMT_GOODS_PRICE']
+    # app_data['NEW_DOC_IND_KURT'] = app_data[docs].kurtosis(axis=1)
+    # app_data['NEW_LIVE_IND_SUM'] = app_data[live].sum(axis=1)
+    app_data['NEW_INC_PER_CHLD'] = app_data['AMT_INCOME_TOTAL'] / (1 + app_data['CNT_CHILDREN'])
+    # app_data['NEW_INC_BY_ORG'] = app_data['ORGANIZATION_TYPE'].map(inc_by_org)
+    app_data['NEW_EMPLOY_TO_BIRTH_RATIO'] = app_data['DAYS_EMPLOYED'] / app_data['DAYS_BIRTH']
+    app_data['NEW_ANNUITY_TO_INCOME_RATIO'] = app_data['AMT_ANNUITY'] / (1 + app_data['AMT_INCOME_TOTAL'])
+    app_data['NEW_SOURCES_PROD'] = app_data['EXT_SOURCE_1'] * app_data['EXT_SOURCE_2'] * app_data['EXT_SOURCE_3']
+    app_data['NEW_EXT_SOURCES_MEAN'] = app_data[['EXT_SOURCE_1', 'EXT_SOURCE_2', 'EXT_SOURCE_3']].mean(axis=1)
+    app_data['NEW_SCORES_STD'] = app_data[['EXT_SOURCE_1', 'EXT_SOURCE_2', 'EXT_SOURCE_3']].std(axis=1)
+    app_data['NEW_SCORES_STD'] = app_data['NEW_SCORES_STD'].fillna(app_data['NEW_SCORES_STD'].mean())
+    app_data['NEW_CAR_TO_BIRTH_RATIO'] = app_data['OWN_CAR_AGE'] / app_data['DAYS_BIRTH']
+    app_data['NEW_CAR_TO_EMPLOY_RATIO'] = app_data['OWN_CAR_AGE'] / app_data['DAYS_EMPLOYED']
+    app_data['NEW_PHONE_TO_BIRTH_RATIO'] = app_data['DAYS_LAST_PHONE_CHANGE'] / app_data['DAYS_BIRTH']
+    app_data['NEW_PHONE_TO_BIRTH_RATIO_EMPLOYER'] = app_data['DAYS_LAST_PHONE_CHANGE'] / app_data['DAYS_EMPLOYED']
+    app_data['NEW_CREDIT_TO_INCOME_RATIO'] = app_data['AMT_CREDIT'] / app_data['AMT_INCOME_TOTAL']
 
     # # Aggregate and merge supplementary datasets
     print('Combined train & test input shape before any merging  = {}'.format(app_data.shape))

@@ -39,8 +39,9 @@ else:
 # Fixed graph parameters
 # EMBEDDING_SIZE = 3  # Use cardinality / 2 instead
 N_HIDDEN_1 = 160
-N_HIDDEN_2 = 80
-N_HIDDEN_3 = 40
+N_HIDDEN_2 = 128
+N_HIDDEN_3 = 64
+N_HIDDEN_4 = 64
 # Learning parameters
 LR = 0.01
 N_EPOCHS = 30
@@ -87,6 +88,11 @@ def nn_model(X_num, X_cat, cat_len, cat_cols):
     out_num_cat = PReLU()(out_num_cat)
     out_num_cat = BatchNormalization()(out_num_cat)
     out_num_cat = Dropout(0.5)(out_num_cat)
+
+    # out_num_cat = Dense(N_HIDDEN_4, activation=None, kernel_initializer='he_normal')(out_num_cat)
+    # out_num_cat = PReLU()(out_num_cat)
+    # out_num_cat = BatchNormalization()(out_num_cat)
+    # out_num_cat = Dropout(0.5)(out_num_cat)
 
     print(out_num_cat.shape)
     # out_num_cat = Dense(1, activation="sigmoid", kernel_initializer='he_normal')(out_num_cat)
@@ -178,6 +184,7 @@ def train():
     # merged_df.fillna(merged_df.median(), inplace=True)
     merged_df.fillna(0, inplace=True)
 
+
     cat_feats_idx = np.array([merged_df.columns.get_loc(x) for x in cat_cols])
     num_cols = list(set(merged_df.columns.tolist()) - set(cat_cols + ['index']))
     int_feats_idx = [merged_df.columns.get_loc(x) for x in non_obj_categoricals]
@@ -192,6 +199,7 @@ def train():
         {'feature': merged_df.columns[~merged_df.columns.isin(cat_cols)],
          'column_index': cont_feats_idx}
     )
+    merged_df.replace({np.inf:999, -np.inf:-999}, inplace=True)
 
     scaler = StandardScaler()
     final_col_names = merged_df.columns
