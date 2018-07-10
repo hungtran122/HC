@@ -338,7 +338,6 @@ def merge_bureau(merged_df, bureau_df, bureau_balance_df):
     }
     br_agg = bureau_df.groupby('SK_ID_CURR').agg(agg_funs)
     br_agg.columns = pd.Index(['BUREAU_' + e[0] + "_" + e[1].upper() for e in br_agg.columns.tolist()])
-    print(br_agg.columns)
     merged_df = merged_df.merge(br_agg, left_on='SK_ID_CURR', right_index=True, how='left')
 
 
@@ -373,6 +372,16 @@ def merge_ins(merged_df, install_df):
     ins_avg = install_df.groupby('SK_ID_CURR').mean()
     merged_df = merged_df.merge(ins_avg, left_on='SK_ID_CURR', right_index=True,
                                 how='left', suffixes=['', '_IAVG'])
+    agg_funs = {
+        'DAYS_INSTALMENT': ['std', 'mean', 'sum'],
+        'DAYS_ENTRY_PAYMENT': ['std', 'mean', 'sum'],
+        'AMT_INSTALMENT': ['std', 'mean', 'sum'],
+        'AMT_PAYMENT': ['std', 'mean', 'sum']
+    }
+    ins_agg = install_df.groupby('SK_ID_CURR').agg(agg_funs)
+    ins_agg.columns = pd.Index(['INS_' + e[0] + "_" + e[1].upper() for e in ins_agg.columns.tolist()])
+    merged_df = merged_df.merge(ins_agg, left_on='SK_ID_CURR', right_index=True, how='left')
+
     print('Shape after merging with installments data = {}'.format(merged_df.shape))
     return merged_df
 def feature_engineering(app_data, bureau_df, bureau_balance_df, credit_card_df,
@@ -386,14 +395,17 @@ def feature_engineering(app_data, bureau_df, bureau_balance_df, credit_card_df,
     """
 
     # # Add new features
+    docs = [_f for _f in app_data.columns if 'FLAG_DOC' in _f]
+    live = [_f for _f in app_data.columns if ('FLAG_' in _f) & ('FLAG_DOC' not in _f) & ('_FLAG_' not in _f)]
+    inc_by_org = app_data[['AMT_INCOME_TOTAL', 'ORGANIZATION_TYPE']].groupby('ORGANIZATION_TYPE').median()['AMT_INCOME_TOTAL']
 
     # Amount loaned relative to salary
     app_data['NEW_CREDIT_TO_ANNUITY_RATIO'] = app_data['AMT_CREDIT'] / app_data['AMT_ANNUITY']
     app_data['NEW_CREDIT_TO_GOODS_RATIO'] = app_data['AMT_CREDIT'] / app_data['AMT_GOODS_PRICE']
-    # app_data['NEW_DOC_IND_KURT'] = app_data[docs].kurtosis(axis=1)
-    # app_data['NEW_LIVE_IND_SUM'] = app_data[live].sum(axis=1)
+    app_data['NEW_DOC_IND_KURT'] = app_data[docs].kurtosis(axis=1)
+    app_data['NEW_LIVE_IND_SUM'] = app_data[live].sum(axis=1)
     app_data['NEW_INC_PER_CHLD'] = app_data['AMT_INCOME_TOTAL'] / (1 + app_data['CNT_CHILDREN'])
-    # app_data['NEW_INC_BY_ORG'] = app_data['ORGANIZATION_TYPE'].map(inc_by_org)
+    app_data['NEW_INC_BY_ORG'] = app_data['ORGANIZATION_TYPE'].map(inc_by_org)
     app_data['NEW_EMPLOY_TO_BIRTH_RATIO'] = app_data['DAYS_EMPLOYED'] / app_data['DAYS_BIRTH']
     app_data['NEW_ANNUITY_TO_INCOME_RATIO'] = app_data['AMT_ANNUITY'] / (1 + app_data['AMT_INCOME_TOTAL'])
     app_data['NEW_SOURCES_PROD'] = app_data['EXT_SOURCE_1'] * app_data['EXT_SOURCE_2'] * app_data['EXT_SOURCE_3']
@@ -488,6 +500,8 @@ def process_dataframe(input_df, encoder_dict=None):
         'PRODUCT_COMBINATION',
         'NAME_CONTRACT_STATUS_CCAVG',
         'STATUS',
+        # 'NUM_INSTALMENT_VERSION',
+        # 'NUM_INSTALMENT_NUMBER',
         'NAME_CONTRACT_STATUS_CAVG'
     ]
 

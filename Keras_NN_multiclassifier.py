@@ -58,6 +58,8 @@ def nn_model(X_num, X_cat, cat_len, cat_cols):
             embed_size = 5
         else:
             embed_size = (c_len//2) + 1
+        if embed_size > 100:
+            embed_size = 100
         x = Embedding(c_len + 1, embed_size, embeddings_initializer='he_normal')(x)
         # x = SpatialDropout1D(0.25)(x)
         x = Flatten()(x)
@@ -150,6 +152,8 @@ def train():
         'PRODUCT_COMBINATION',
         'NAME_CONTRACT_STATUS_CCAVG',
         'STATUS',
+        # 'NUM_INSTALMENT_VERSION',
+        # 'NUM_INSTALMENT_NUMBER',
         'NAME_CONTRACT_STATUS_CAVG'
     ]
     # print('Categorical features length before add non object categorical features: ', len(cat_cols))
@@ -248,7 +252,7 @@ def train():
     model = nn_model(X_num, X_cat, cat_len, cat_cols)
     model.compile(loss='categorical_crossentropy',
                   optimizer=keras.optimizers.Adam(lr=LR))  # , metrics=['binary_accuracy'])
-    # model.summary()
+    model.summary()
 
     # kfold = KFold(n_splits=5, shuffle=True, random_state=2018)
     skf = StratifiedKFold(n_splits=n_folds, random_state=2)
